@@ -1,5 +1,7 @@
 # PAYAPP FastAPI 데모
 
+![Demo GIF Video](./docs/demo.gif)
+
 온라인 비즈니스를 만들기 위해 가장 중요한 요소 중 하나는 **결제 시스템**입니다.
 하지만 대부분의 PG(Payment Gateway)사는 **사업자등록증이 없는 개인**의 결제를 받아주지 않습니다.
 
