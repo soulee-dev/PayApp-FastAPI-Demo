@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>PAYAPP 결제 테스트</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script defer src="https://lite.payapp.kr/public/api/v2/payapp-lite.js"></script>
+</head>
+<body>
+  <h1>PAYAPP 결제 테스트</h1>
+
+  <section>
+    <h2>상품 선택</h2>
+    <select id="product"></select>
+    <button id="load">주문 만들기</button>
+  </section>
+
+  <section style="margin-top:12px;">
+    <div id="info"></div>
+    <button id="pay" disabled>결제하기</button>
+  </section>
+
+  <section style="margin-top:24px;">
+    <h3>신규 상품 추가(데모)</h3>
+    <input id="newName" placeholder="상품명" />
+    <input id="newPrice" type="number" placeholder="가격(원)" />
+    <button id="add">추가</button>
+    <div id="addMsg" style="margin-top:6px;color:green;"></div>
+  </section>
+
+  <script>
+    let order = null;
+    let products = [];
+
+    async function loadProducts() {
+      const res = await fetch("/products");
+      products = await res.json();
+      const sel = document.getElementById("product");
+      sel.innerHTML = "";
+      products.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = String(p.id);
+        opt.textContent = `${p.name} — ${Number(p.price).toLocaleString()}원`;
+        sel.appendChild(opt);
+      });
+      if (products.length === 0) {
+        const opt = document.createElement("option");
+        opt.textContent = "상품이 없습니다. 아래 폼으로 추가하세요.";
+        sel.appendChild(opt);
+      }
+    }
+
+    document.getElementById("load").addEventListener("click", async () => {
+      const sel = document.getElementById("product");
+      const productId = parseInt(sel.value, 10);
+      if (!productId) return;
+
+      const res = await fetch("/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_id: productId }),
+      });
+      order = await res.json();
+
+      document.getElementById("info").textContent =
+        `주문번호: ${order.order_id} | 상품명: ${order.product_name} | 금액: ${order.amount.toLocaleString()}원`;
+      document.getElementById("pay").disabled = false;
+
+      PayApp.setDefault("userid", order.userid);
+      PayApp.setDefault("shopname", order.shopname);
+    });
+
+    document.getElementById("pay").addEventListener("click", () => {
+      if (!order) return;
+
+      PayApp.setParam("goodname", order.product_name);
+      PayApp.setParam("price", String(order.amount));
+      PayApp.setParam("var1", order.order_id);
+      PayApp.setParam("recvphone", "01000000000");
+      PayApp.setParam("feedbackurl", order.feedbackurl);
+      PayApp.setParam("returnurl", order.returnurl);
+      PayApp.setParam("checkretry", "y");
+      PayApp.setParam("smsuse", "n");
+      PayApp.setParam("redirectpay", "1");
+      PayApp.setParam("skip_cstpage", "y");
+      PayApp.payrequest();
+    });
+
+    // 데모용: 상품 추가
+    document.getElementById("add").addEventListener("click", async () => {
+      const name = document.getElementById("newName").value.trim();
+      const price = parseInt(document.getElementById("newPrice").value, 10);
+      if (!name || isNaN(price)) return;
+
+      const res = await fetch("/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, price }),
+      });
+      if (res.ok) {
+        document.getElementById("addMsg").textContent = "상품이 추가되었습니다.";
+        document.getElementById("newName").value = "";
+        document.getElementById("newPrice").value = "";
+        await loadProducts();
+      } else {
+        document.getElementById("addMsg").style.color = "red";
+        document.getElementById("addMsg").textContent = "추가 실패";
+      }
+    });
+
+    // 초기 로딩
+    loadProducts();
+  </script>
+</body>
+</html>
